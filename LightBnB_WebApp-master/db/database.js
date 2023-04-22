@@ -283,12 +283,49 @@ const getAllProperties = (options, limit = 10) => {
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
-const addProperty = function (property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
+// const addProperty = function (property) {
+//   const propertyId = Object.keys(properties).length + 1;
+//   property.id = propertyId;
+//   properties[propertyId] = property;
+//   return Promise.resolve(property);
+// };
+
+const addProperty = (listing) => {
+
+  const {owner_id, title , description, thumbnail_photo_url, cover_photo_url, cost_per_night, parking_spaces, street, city, province, post_code, country, number_of_bathrooms, number_of_bedrooms, active} = listing;
+  return pool
+    .query(
+      `INSERT INTO properties (owner_id, title, description, thumbnail_photo_url, cover_photo_url, cost_per_night, parking_spaces, street, city, province, post_code, country, number_of_bathrooms, number_of_bedrooms, active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *;`,
+      [owner_id, title, description, thumbnail_photo_url, cover_photo_url, cost_per_night, parking_spaces, street, city, province, post_code, country, number_of_bathrooms, number_of_bedrooms, active || false])
+    .then((result) => {
+      console.log(result.rows);
+      const insertedProperty = result.rows[0];
+      const jsonProperty = {
+        owner_id: insertedProperty.owner_id,
+        title: insertedProperty.title,
+        description: insertedProperty.description,
+        thumbnail_photo_url: insertedProperty.thumbnail_photo_url,
+        cover_photo_url: insertedProperty.cover_photo_url,
+        cost_per_night: insertedProperty.cost_per_night,
+        parking_spaces: insertedProperty.parking_spaces,
+        street: insertedProperty.street,
+        city: insertedProperty.city,
+        province: insertedProperty.province,
+        post_code: insertedProperty.post_code,
+        country: insertedProperty.country,
+        number_of_bathrooms: insertedProperty.number_of_bathrooms,
+        number_of_bedrooms: insertedProperty.number_of_bedrooms,
+        active: insertedProperty.active
+      };
+      return jsonProperty;
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
+
 
 module.exports = {
   getUserWithEmail,
