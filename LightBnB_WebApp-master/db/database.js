@@ -183,20 +183,100 @@ const getAllReservations = (guest_id, limit = 10) => {
 
 const getAllProperties = (options, limit = 10) => {
 
-  return pool
-    .query(
-      `SELECT * 
-      FROM properties
-      LIMIT $1` ,
-      [limit])
-    .then((result) => {
-      console.log(result.rows);
-      return result.rows;
-    })
-    .catch((err) => {
-      console.log(err.message);
-    });
+  // 1
+  const queryParams = [];
+  // 2
+  let queryString = `
+  SELECT properties.*, avg(property_reviews.rating) as average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id
+  `;
+
+  // 3
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `WHERE city LIKE $${queryParams.length} `;
+  }
+
+  if (options.owner_id) {
+    queryParams.push(`${options.owner_id}`);
+    // takes in owner_id which is the user signed in
+    queryString += `WHERE owner_id = $${queryParams.length} `;
+  }
+
+  if (options.minimum_price_per_night) {
+    // this will transform price in the format contained in database (in cents)
+    let requestedMinCost = options.minimum_price_per_night * 100;
+    // push param to params array
+    queryParams.push(`${requestedMinCost}`);
+    // add string to query cost_per_night should be higher or equal to param for min cost
+    queryString += `AND cost_per_night >= $${queryParams.length} `;
+  }
+
+  if (options.maximum_price_per_night) {
+    // this will transform price in the format contained in database (in cents)
+    let requestedMaxCost = options.maximum_price_per_night * 100;
+    // push param to params array
+    queryParams.push(`${requestedMaxCost}`);
+    // add string to query cost_per_night should be higher or equal to param for min cost
+    queryString += `AND cost_per_night <= $${queryParams.length} `;
+  }
+
+  if (options.maximum_price_per_night) {
+    // this will transform price in the format contained in database (in cents)
+    let requestedMaxCost = options.maximum_price_per_night * 100;
+    // push param to params array
+    queryParams.push(`${requestedMaxCost}`);
+    // add string to query cost_per_night should be lower or equal to param for max cost
+    queryString += `AND cost_per_night <= $${queryParams.length} `;
+  }
+
+  if (options.minimum_rating) {
+    queryParams.push(`${options.minimum_rating}`);
+    // create a special if statement for rating as HAVING needs to be added after GROUP BY so the string is not the same as for the other params
+    queryString += `
+    GROUP BY properties.id
+    HAVING avg(property_reviews.rating) >= $${queryParams.length} `;
+
+    queryParams.push(limit);
+    queryString += `
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};
+  `;
+  } else {
+
+  // 4
+  queryParams.push(limit);
+  queryString += `
+  GROUP BY properties.id
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};
+  `;
+  }
+
+  // 5
+  console.log(queryString, queryParams);
+
+  // 6
+  return pool.query(queryString, queryParams).then((res) => res.rows);
 };
+
+  // return pool
+  //   .query(
+  //     `SELECT properties.*, avg(property_reviews.rating) as average_rating
+  //     FROM properties
+  //     LEFT JOIN property_reviews ON properties.id = property_id
+  //     GROUP BY properties.id
+  //     LIMIT $1`,
+  //     [limit])
+  //   .then((result) => {
+  //     console.log(result.rows);
+  //     return result.rows;
+  //   })
+  //   .catch((err) => {
+  //     console.log(err.message);
+  //   });
+// };
 
 /**
  * Add a property to the database
